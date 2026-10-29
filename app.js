@@ -161,7 +161,33 @@
   function cardHtml(p) {
     var where = "第 " + rowNo(p) + " 行";
     if (p.pageCount > 1) where += " · 第 " + (p.page || 1) + "/" + p.pageCount + " 页";
-    return '<article class="card" data-act="open" data-id="' + p.id + '"><div class="thumb"><img alt="" data-thumb="' + p.id + '"></div><div class="card-body"><b>' + esc(p.title) + '</b><div class="card-tools"><span>' + where + '</span><button class="textbtn" data-act="delete" data-id="' + p.id + '">删除</button></div></div></article>';
+    return '<article class="card"><div class="thumb" data-act="open" data-id="' + p.id + '"><img alt="" data-thumb="' + p.id + '"></div><div class="card-body"><label class="card-name-label">名称</label><input class="card-name" data-name-for="' + p.id + '" value="' + esc(p.title) + '" autocomplete="off"><div class="card-tools"><span>' + where + '</span><button class="textbtn" data-act="delete" data-id="' + p.id + '">删除</button></div></div></article>';
+  }
+
+  function bindNames(root) {
+    (root || app).querySelectorAll("[data-name-for]").forEach(function (input) {
+      if (input.dataset.bound) return;
+      input.dataset.bound = "1";
+      input.addEventListener("input", function () {
+        var p = get(input.getAttribute("data-name-for"));
+        if (!p) return;
+        p.title = input.value;
+        p.updatedAt = Date.now();
+        save();
+      });
+      input.addEventListener("blur", function () {
+        var p = get(input.getAttribute("data-name-for"));
+        if (!p) return;
+        var name = input.value.trim() || "未命名图解";
+        input.value = name;
+        p.title = name;
+        p.updatedAt = Date.now();
+        save();
+      });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") input.blur();
+      });
+    });
   }
 
   function fillThumbs(root) {
@@ -199,8 +225,10 @@
       if (!listNow.length) { render(); return; }
       grid.innerHTML = listNow.map(cardHtml).join("");
       fillThumbs(grid);
+      bindNames(grid);
     });
     fillThumbs(app);
+    bindNames(app);
   }
 
   function renderMe() {
@@ -218,9 +246,10 @@
     }).join("");
     var pager = p.pageCount > 1 ? '<div class="tools" style="margin-top:8px"><button class="ghost" data-act="page" data-dir="-1">上一页</button><div class="pager" id="pager-label">' + (p.page || 1) + " / " + p.pageCount + '</div><button class="ghost" data-act="page" data-dir="1">下一页</button></div>' : "";
     var media = p.kind === "pdf" ? '<canvas id="sheet-canvas"></canvas>' : '<img id="sheet-img" alt="">';
-    app.innerHTML = '<header class="top"><button class="back" data-act="back">返回</button><button class="title" data-act="rename">' + esc(p.title) + '</button></header><div class="stage" id="stage"><p class="loading" id="loading">正在打开图解…</p><div class="sheet pending" id="sheet">' + media + '<div id="mark" class="mark"><span>这一行</span><i class="grip"></i></div></div></div><div class="dock"><div class="colors">' + colors + '</div><p class="hint">拖动色条对准这一行。底部小柄可改成一行的高度，加减就按这个高度移动。</p><div class="counter"><button class="round" data-act="nudge" data-dir="-1" aria-label="上一行">−</button><div class="big" id="rownum">第 ' + rowNo(p) + ' 行</div><button class="round plus" data-act="nudge" data-dir="1" aria-label="下一行">+</button></div><div class="tools zoom" style="margin-top:8px">' + zooms + "</div>" + pager + "</div>";
+    app.innerHTML = '<header class="top"><button class="back" data-act="back">返回</button><label class="name-field"><span>名称</span><input id="title-input" data-name-for="' + p.id + '" value="' + esc(p.title) + '" autocomplete="off"></label></header><section class="meter"><div class="counter"><button class="round" data-act="nudge" data-dir="-1" aria-label="上一行">−</button><div class="count-block"><div class="big" id="rownum">' + rowNo(p) + '</div><div class="count-cap">当前行</div></div><button class="round plus" data-act="nudge" data-dir="1" aria-label="下一行">+</button></div><p class="hint">加减按色条高度移动一行，色条会跟着走</p></section><div class="stage" id="stage"><p class="loading" id="loading">正在打开图解…</p><div class="sheet pending" id="sheet">' + media + '<div id="mark" class="mark"><span>这一行</span><i class="grip"></i></div></div></div><div class="dock"><div class="colors">' + colors + '</div><p class="hint">拖动图上的色条对准这一行，底部小柄可改高度</p><div class="tools zoom">' + zooms + "</div>" + pager + "</div>";
     document.body.classList.add("reader");
     bindMark();
+    bindNames(app);
     mountSheet();
   }
 
@@ -237,6 +266,7 @@
     var p = current();
     var el = document.getElementById("rownum");
     if (p && el) el.textContent = "第 " + rowNo(p) + " 行";
+    if (p && el) el.textContent = String(rowNo(p));
   }
 
   function placeMark() {
@@ -592,17 +622,6 @@
       render();
       return;
     }
-    if (act === "rename") {
-      var p = current();
-      if (!p) return;
-      var name = window.prompt("图解名称", p.title);
-      if (!name || !name.trim()) return;
-      p.title = name.trim();
-      p.updatedAt = Date.now();
-      save();
-      t.textContent = p.title;
-      return;
-    }
     if (act === "nudge") { nudge(Number(t.dataset.dir)); return; }
     if (act === "zoom") { setZoom(t.dataset.zoom); return; }
     if (act === "page") { setPage(Number(t.dataset.dir)); return; }
@@ -653,6 +672,7 @@
 
   window.addEventListener("keydown", function (e) {
     if (view.name !== "viewer") return;
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
     if (e.key === "ArrowDown") { e.preventDefault(); nudge(1); }
     if (e.key === "ArrowUp") { e.preventDefault(); nudge(-1); }
     if (e.key === "Escape") {

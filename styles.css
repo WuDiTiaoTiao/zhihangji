@@ -115,14 +115,28 @@ body.reader .shell {
 }
 .top {
   flex: none; display: flex; align-items: center; gap: 8px;
-  padding: calc(10px + env(safe-area-inset-top)) 12px 8px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 4px;
 }
 .top .back, .zoom button, .pager button {
   border: 0; background: var(--paper); border-radius: 999px; padding: 8px 12px; box-shadow: var(--shadow); font-weight: 700;
 }
+.name-field { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.name-field span, .card-name-label { font-size: 11px; color: var(--muted); }
+.name-field input, .card-name {
+  width: 100%; border: 1px solid var(--line); background: var(--paper); color: var(--ink);
+  border-radius: 12px; padding: 8px 10px; font-size: 16px; font-weight: 700;
+}
+.card-name { margin-bottom: 6px; }
+.meter { flex: none; padding: 2px 12px 8px; }
+.count-block { min-width: 108px; text-align: center; }
+.count-cap { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.meter .big { font-size: 64px; line-height: 0.85; font-variant-numeric: tabular-nums; }
+.meter .round { width: 72px; height: 72px; font-size: 40px; }
+.meter .hint { margin: 6px 0 0; }
+.dock .hint { margin: 0 0 8px; }
+
 .title {
-  flex: 1; min-width: 0; border: 0; background: transparent; text-align: left;
-  font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; min-width: 0;
 }
 .stage { flex: 1; overflow: auto; background: #ddd7e8; }
 body[data-theme="dark"] .stage { background: #0d0c11; }
