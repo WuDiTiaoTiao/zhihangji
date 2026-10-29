@@ -51,14 +51,15 @@
         var y = mark && typeof mark.y === "number" ? mark.y : 0;
         p.row = Math.max(1, Math.floor(y / h) + 1);
       });
-      return { patterns: raw.patterns, theme: raw.theme === "dark" ? "dark" : "light" };
+      var viewMode = raw.viewMode === "small" || raw.viewMode === "list" ? raw.viewMode : "large";
+      return { patterns: raw.patterns, theme: raw.theme === "dark" ? "dark" : "light", viewMode: viewMode };
     } catch (e) {
-      return { patterns: [], theme: "light" };
+      return { patterns: [], theme: "light", viewMode: "large" };
     }
   }
 
   function save() {
-    localStorage.setItem(KEY, JSON.stringify({ patterns: state.patterns, theme: state.theme }));
+    localStorage.setItem(KEY, JSON.stringify({ patterns: state.patterns, theme: state.theme, viewMode: state.viewMode || "large" }));
   }
 
   save();
@@ -176,6 +177,22 @@
     return '<article class="card"><div class="thumb" data-act="open" data-id="' + p.id + '"><img alt="" data-thumb="' + p.id + '"></div><div class="card-body"><label class="card-name-label">名称</label><input class="card-name" data-name-for="' + p.id + '" value="' + esc(p.title) + '" autocomplete="off"><div class="card-tools"><span>' + where + '</span><button class="textbtn" data-act="delete" data-id="' + p.id + '">删除</button></div></div></article>';
   }
 
+  function viewMode() {
+    return state.viewMode === "small" || state.viewMode === "list" ? state.viewMode : "large";
+  }
+
+  function viewMenuHtml() {
+    var mode = viewMode();
+    function item(id, label, icon) {
+      return '<button data-act="setview" data-view="' + id + '"' + (mode === id ? ' class="on"' : "") + '><span class="markdot"></span>' + icon + "<span>" + label + "</span></button>";
+    }
+    var large = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg>';
+    var small = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.4" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.4" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.4" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.4" fill="currentColor"/></svg>';
+    var list = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="3" rx="1.2" fill="currentColor"/><rect x="3" y="10.5" width="18" height="3" rx="1.2" fill="currentColor"/><rect x="3" y="16" width="18" height="3" rx="1.2" fill="currentColor"/></svg>';
+    var trigger = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6" fill="currentColor"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6" fill="currentColor"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6" fill="currentColor"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6" fill="currentColor"/></svg>';
+    return '<div class="view-wrap"><button class="viewbtn" data-act="viewmenu" aria-label="查看方式" aria-haspopup="menu">' + trigger + '</button><div id="viewmenu" class="viewmenu" hidden>' + item("large", "大图标", large) + item("small", "小图标", small) + item("list", "列表", list) + "</div></div>";
+  }
+
   function bindNames(root) {
     (root || app).querySelectorAll("[data-name-for]").forEach(function (input) {
       if (input.dataset.bound) return;
@@ -226,8 +243,8 @@
     var resume = lastOpened();
     var list = filtered();
     var resumeHtml = resume ? '<button class="resume" data-act="open" data-id="' + resume.id + '"><span>继续上次<small style="display:block;font-weight:400;margin-top:2px">色条还停在原来的位置</small></span><b>' + esc(resume.title) + '</b></button>' : "";
-    var body = list.length ? '<div class="grid" id="grid">' + list.map(cardHtml).join("") + "</div>" : '<div class="empty"><p>导入织毛线的图片或 PDF。行数用加减自己记，色条拖到图上对应的位置，下次打开都还在。</p><button class="solid" data-act="import">导入图片或 PDF</button></div>';
-    app.innerHTML = '<div class="pad"><div class="headrow"><h1>织行记</h1><button class="solid" data-act="import">导入</button></div><p class="sub">行数自己加减，透明色条自己拖到图上对应的位置，两件事互不影响。</p><label class="search"><input id="q" placeholder="搜索图解" value="' + esc(ui.query) + '"></label>' + resumeHtml + body + "</div>" + nav("library");
+    var body = list.length ? '<div class="grid view-' + viewMode() + '" id="grid">' + list.map(cardHtml).join("") + "</div>" : '<div class="empty"><p>导入织毛线的图片或 PDF。行数用加减自己记，色条拖到图上对应的位置，下次打开都还在。</p><button class="solid" data-act="import">导入图片或 PDF</button></div>';
+    app.innerHTML = '<div class="pad"><div class="headrow"><h1>织行记</h1><div class="head-actions">' + viewMenuHtml() + '<button class="solid" data-act="import">导入</button></div></div><p class="sub">行数自己加减，透明色条自己拖到图上对应的位置，两件事互不影响。</p><label class="search"><input id="q" placeholder="搜索图解" value="' + esc(ui.query) + '"></label>' + resumeHtml + body + "</div>" + nav("library");
     var q = document.getElementById("q");
     if (q) q.addEventListener("input", function () {
       ui.query = q.value;
@@ -614,6 +631,19 @@
     if (!t || !app.contains(t)) return;
     var act = t.dataset.act;
     if (act === "import") { document.getElementById("file").click(); return; }
+    if (act === "viewmenu") {
+      var menu = document.getElementById("viewmenu");
+      if (menu) menu.hidden = !menu.hidden;
+      return;
+    }
+    if (act === "setview") {
+      var next = t.dataset.view;
+      if (next !== "small" && next !== "list") next = "large";
+      state.viewMode = next;
+      save();
+      render();
+      return;
+    }
     if (act === "tab") {
       if (view.name === "viewer") dropLive();
       view = { name: t.dataset.name };
@@ -686,6 +716,13 @@
       view = { name: "library" };
       render();
     }
+  });
+
+  document.addEventListener("click", function (e) {
+    var menu = document.getElementById("viewmenu");
+    if (!menu || menu.hidden) return;
+    if (e.target.closest && e.target.closest(".view-wrap")) return;
+    menu.hidden = true;
   });
 
   render();
