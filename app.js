@@ -41,6 +41,16 @@
     try {
       var raw = JSON.parse(localStorage.getItem(KEY) || "");
       if (!raw || !Array.isArray(raw.patterns)) throw new Error("empty");
+      raw.patterns.forEach(function (p) {
+        if (typeof p.row === "number" && p.row >= 1) {
+          p.row = Math.round(p.row);
+          return;
+        }
+        var mark = p.marks && p.marks[String(p.page || 1)];
+        var h = mark && mark.h > 0.005 ? mark.h : 0.045;
+        var y = mark && typeof mark.y === "number" ? mark.y : 0;
+        p.row = Math.max(1, Math.floor(y / h) + 1);
+      });
       return { patterns: raw.patterns, theme: raw.theme === "dark" ? "dark" : "light" };
     } catch (e) {
       return { patterns: [], theme: "light" };
@@ -50,6 +60,8 @@
   function save() {
     localStorage.setItem(KEY, JSON.stringify({ patterns: state.patterns, theme: state.theme }));
   }
+
+  save();
 
   function applyTheme() {
     if (state.theme === "dark") document.body.dataset.theme = "dark";
@@ -125,9 +137,9 @@
   }
 
   function rowNo(p) {
-    var m = pageMark(p);
-    var h = m.h > 0.005 ? m.h : 0.045;
-    return Math.max(1, Math.floor(m.y / h) + 1);
+    var n = Number(p && p.row);
+    if (!isFinite(n) || n < 1) return 1;
+    return Math.round(n);
   }
 
   function toast(msg) {
@@ -214,8 +226,8 @@
     var resume = lastOpened();
     var list = filtered();
     var resumeHtml = resume ? '<button class="resume" data-act="open" data-id="' + resume.id + '"><span>继续上次<small style="display:block;font-weight:400;margin-top:2px">色条还停在原来的位置</small></span><b>' + esc(resume.title) + '</b></button>' : "";
-    var body = list.length ? '<div class="grid" id="grid">' + list.map(cardHtml).join("") + "</div>" : '<div class="empty"><p>导入织毛线的图片或 PDF。打开后拖动半透明色条，标出织到哪一行，下次打开还在原来的位置。</p><button class="solid" data-act="import">导入图片或 PDF</button></div>';
-    app.innerHTML = '<div class="pad"><div class="headrow"><h1>织行记</h1><button class="solid" data-act="import">导入</button></div><p class="sub">图片和 PDF 图解，用一条透明色条记住织到哪一行。</p><label class="search"><input id="q" placeholder="搜索图解" value="' + esc(ui.query) + '"></label>' + resumeHtml + body + "</div>" + nav("library");
+    var body = list.length ? '<div class="grid" id="grid">' + list.map(cardHtml).join("") + "</div>" : '<div class="empty"><p>导入织毛线的图片或 PDF。行数用加减自己记，色条拖到图上对应的位置，下次打开都还在。</p><button class="solid" data-act="import">导入图片或 PDF</button></div>';
+    app.innerHTML = '<div class="pad"><div class="headrow"><h1>织行记</h1><button class="solid" data-act="import">导入</button></div><p class="sub">行数自己加减，透明色条自己拖到图上对应的位置，两件事互不影响。</p><label class="search"><input id="q" placeholder="搜索图解" value="' + esc(ui.query) + '"></label>' + resumeHtml + body + "</div>" + nav("library");
     var q = document.getElementById("q");
     if (q) q.addEventListener("input", function () {
       ui.query = q.value;
@@ -247,6 +259,7 @@
     var pager = p.pageCount > 1 ? '<div class="tools" style="margin-top:8px"><button class="ghost" data-act="page" data-dir="-1">上一页</button><div class="pager" id="pager-label">' + (p.page || 1) + " / " + p.pageCount + '</div><button class="ghost" data-act="page" data-dir="1">下一页</button></div>' : "";
     var media = p.kind === "pdf" ? '<canvas id="sheet-canvas"></canvas>' : '<img id="sheet-img" alt="">';
     app.innerHTML = '<header class="top"><button class="back" data-act="back">返回</button><label class="name-field"><span>名称</span><input id="title-input" data-name-for="' + p.id + '" value="' + esc(p.title) + '" autocomplete="off"></label></header><section class="meter"><div class="counter"><button class="round" data-act="nudge" data-dir="-1" aria-label="上一行">−</button><div class="count-block"><div class="big" id="rownum">' + rowNo(p) + '</div><div class="count-cap">当前行</div></div><button class="round plus" data-act="nudge" data-dir="1" aria-label="下一行">+</button></div><p class="hint">加减按色条高度移动一行，色条会跟着走</p></section><div class="stage" id="stage"><p class="loading" id="loading">正在打开图解…</p><div class="sheet pending" id="sheet">' + media + '<div id="mark" class="mark"><span>这一行</span><i class="grip"></i></div></div></div><div class="dock"><div class="colors">' + colors + '</div><p class="hint">拖动图上的色条对准这一行，底部小柄可改高度</p><div class="tools zoom">' + zooms + "</div>" + pager + "</div>";
+    app.innerHTML = '<header class="top"><button class="back" data-act="back">返回</button><label class="name-field"><span>名称</span><input id="title-input" data-name-for="' + p.id + '" value="' + esc(p.title) + '" autocomplete="off"></label></header><section class="meter"><div class="counter"><button class="round" data-act="nudge" data-dir="-1" aria-label="上一行">−</button><div class="count-block"><div class="big" id="rownum">' + rowNo(p) + '</div><div class="count-cap">当前行</div></div><button class="round plus" data-act="nudge" data-dir="1" aria-label="下一行">+</button></div><p class="hint">加减只改行数，不会移动色条</p></section><div class="stage" id="stage"><p class="loading" id="loading">正在打开图解…</p><div class="sheet pending" id="sheet">' + media + '<div id="mark" class="mark"><span>这一行</span><i class="grip"></i></div></div></div><div class="dock"><div class="colors">' + colors + '</div><p class="hint">拖动色条只改它自己的位置，底部小柄可改高度</p><div class="tools zoom">' + zooms + "</div>" + pager + "</div>";
     document.body.classList.add("reader");
     bindMark();
     bindNames(app);
@@ -265,7 +278,6 @@
   function updateRowLabel() {
     var p = current();
     var el = document.getElementById("rownum");
-    if (p && el) el.textContent = "第 " + rowNo(p) + " 行";
     if (p && el) el.textContent = String(rowNo(p));
   }
 
@@ -284,7 +296,6 @@
     mark.style.background = c.fill;
     mark.style.outline = "2px solid " + c.edge;
     mark.style.outlineOffset = "-2px";
-    updateRowLabel();
   }
 
   function layoutSheet() {
@@ -449,19 +460,13 @@
 
   function nudge(dir) {
     var p = current();
-    var sheet = document.getElementById("sheet");
-    if (!p || !sheet || !sheet.clientHeight) return;
-    var m = pageMark(p);
-    var H = sheet.clientHeight;
-    var hPx = Math.max(8, m.h * H);
-    var top = m.y * H + dir * hPx;
-    top = Math.min(Math.max(0, top), Math.max(0, H - hPx));
-    m.y = top / H;
+    if (!p) return;
+    var step = Number(dir);
+    if (!step) return;
+    p.row = Math.max(1, rowNo(p) + step);
     p.updatedAt = Date.now();
-    placeMark();
+    updateRowLabel();
     save();
-    var mark = document.getElementById("mark");
-    if (mark) mark.scrollIntoView({ block: "center", inline: "nearest" });
   }
 
   function setZoom(z) {
@@ -546,6 +551,7 @@
       zoom: 1,
       color: "coral",
       marks: { "1": { y: 0, h: 0.045 } },
+      row: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       openedAt: 0
