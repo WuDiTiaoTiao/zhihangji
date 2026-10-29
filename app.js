@@ -174,6 +174,9 @@
   function cardHtml(p) {
     var where = "第 " + rowNo(p) + " 行";
     if (p.pageCount > 1) where += " · 第 " + (p.page || 1) + "/" + p.pageCount + " 页";
+    if (viewMode() === "list") {
+      return '<article class="card list-row"><button class="list-name" data-act="open" data-id="' + p.id + '">' + esc(p.title) + '</button><button class="textbtn" data-act="delete" data-id="' + p.id + '">删除</button></article>';
+    }
     return '<article class="card"><div class="thumb" data-act="open" data-id="' + p.id + '"><img alt="" data-thumb="' + p.id + '"></div><div class="card-body"><label class="card-name-label">名称</label><input class="card-name" data-name-for="' + p.id + '" value="' + esc(p.title) + '" autocomplete="off"><div class="card-tools"><span>' + where + '</span><button class="textbtn" data-act="delete" data-id="' + p.id + '">删除</button></div></div></article>';
   }
 

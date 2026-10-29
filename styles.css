@@ -112,10 +112,16 @@ body.wide .grid.view-small { grid-template-columns: repeat(5, 1fr); }
 .view-small .card-name { font-size: 12px; padding: 4px 6px; margin-bottom: 4px; }
 .view-small .card-tools { margin-top: 4px; gap: 4px; }
 .view-small .card-tools span, .view-small .textbtn { font-size: 11px; }
-.view-list .card { display: flex; align-items: stretch; }
-.view-list .thumb { width: 86px; aspect-ratio: auto; flex: none; }
-.view-list .thumb img { height: 100%; min-height: 96px; }
-.view-list .card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.view-list { gap: 8px; }
+.list-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 2px 10px 2px 16px; min-height: 48px;
+}
+.list-name {
+  flex: 1; min-width: 0; border: 0; background: transparent;
+  text-align: left; font-size: 16px; font-weight: 700;
+  padding: 12px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .card {
   background: var(--paper); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); text-align: left;
   cursor: pointer;
